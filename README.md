@@ -21,7 +21,7 @@ A powerful command-line tool to **view, edit, fake, clear, copy, export and impo
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/exif-editor.git
+git clone https://github.com/rahulrawatgujjar/exif-editor.git
 cd exif-editor
 ```
 
@@ -71,7 +71,7 @@ Follow the prompts to configure your EXIF metadata!
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/exif-editor.git
+git clone https://github.com/rahulrawatgujjar/exif-editor.git
 cd exif-editor
 
 # Run setup script
@@ -82,7 +82,7 @@ cd exif-editor
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/exif-editor.git
+git clone https://github.com/rahulrawatgujjar/exif-editor.git
 cd exif-editor
 
 # Create virtual environment
@@ -331,9 +331,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 📧 Create an [issue](https://github.com/yourusername/exif-editor/issues) for bugs
-- 💡 Request [features](https://github.com/yourusername/exif-editor/issues) you'd like to see
-- 📖 Check the [wiki](https://github.com/yourusername/exif-editor/wiki) for advanced usage
+- 📧 Create an [issue](https://github.com/rahulrawatgujjar/exif-editor/issues) for bugs
+- 💡 Request [features](https://github.com/rahulrawatgujjar/exif-editor/issues) you'd like to see
+- 📖 Check the [wiki](https://github.com/rahulrawatgujjar/exif-editor/wiki) for advanced usage
 
 ---
 

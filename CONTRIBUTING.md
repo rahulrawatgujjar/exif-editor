@@ -30,7 +30,7 @@ This project follows a code of conduct to ensure a welcoming environment for all
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/yourusername/exif-editor.git
+   git clone https://github.com/rahulrawatgujjar/exif-editor.git
    cd exif-editor
    ```
 3. **Set up the development environment**:
@@ -55,7 +55,7 @@ This project follows a code of conduct to ensure a welcoming environment for all
 
 ### Finding Issues
 
-- Check the [Issues](https://github.com/yourusername/exif-editor/issues) page
+- Check the [Issues](https://github.com/rahulrawatgujjar/exif-editor/issues) page
 - Look for issues labeled `good first issue` or `help wanted`
 - Comment on issues you'd like to work on
 
@@ -71,7 +71,7 @@ This project follows a code of conduct to ensure a welcoming environment for all
 
 1. **Clone and setup**:
    ```bash
-   git clone https://github.com/yourusername/exif-editor.git
+   git clone https://github.com/rahulrawatgujjar/exif-editor.git
    cd exif-editor
    ./setup.sh
    ```
@@ -226,9 +226,9 @@ style: format code according to PEP 8
 
 ## 📞 Getting Help
 
-- 📧 **Issues**: [GitHub Issues](https://github.com/yourusername/exif-editor/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/exif-editor/discussions)
-- 📖 **Documentation**: Check the [Wiki](https://github.com/yourusername/exif-editor/wiki)
+- 📧 **Issues**: [GitHub Issues](https://github.com/rahulrawatgujjar/exif-editor/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/rahulrawatgujjar/exif-editor/discussions)
+- 📖 **Documentation**: Check the [Wiki](https://github.com/rahulrawatgujjar/exif-editor/wiki)
 
 ## 🙏 Recognition
 
