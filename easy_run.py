@@ -12,6 +12,9 @@ from pathlib import Path
 from camera_presets import CAMERA_PRESETS
 
 
+JPEG_EXTS = {".jpg", ".jpeg", ".jpe", ".jfif"}
+
+
 class _LineWriter:
     """File-like writer that emits complete lines to a callback."""
 
@@ -51,8 +54,13 @@ def run_exif_editor_args(args: list[str], emit_line=None) -> int:
         writer.flush()
         code = exc.code
         if isinstance(code, int):
+            if code != 0:
+                emit_line(f"exif_editor exited with code {code}.")
             return code
-        return 0 if code in (None, "") else 1
+        if code not in (None, ""):
+            emit_line(str(code))
+            return 1
+        return 0
     except Exception as exc:
         writer.flush()
         emit_line(f"Error: {exc}")
@@ -394,6 +402,17 @@ def run_gui() -> int:
             input_path = Path(input_value)
             if not input_path.exists():
                 return None, f"Input path does not exist: {input_value}"
+
+            if input_path.is_file() and input_path.suffix.lower() not in JPEG_EXTS:
+                return None, "Only JPEG files are supported (.jpg, .jpeg, .jpe, .jfif)."
+
+            if input_path.is_dir():
+                has_jpeg = any(
+                    p.is_file() and p.suffix.lower() in JPEG_EXTS
+                    for p in input_path.iterdir()
+                )
+                if not has_jpeg:
+                    return None, "Selected folder has no JPEG files."
 
             cmd = ["fake", input_value, "-p", self.preset.get()]
 
