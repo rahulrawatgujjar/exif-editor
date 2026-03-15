@@ -74,6 +74,28 @@ python exif_editor.py fake image.jpg --city "Paris"
 
 Use the GUI form to configure and run your EXIF metadata command.
 
+## Single-File Windows EXE
+
+You can package the app into one shareable Windows executable.
+
+### Build on Windows
+
+```cmd
+build_windows_exe.bat
+```
+
+This creates:
+
+```text
+dist\ExifEditor.exe
+```
+
+Share `dist\ExifEditor.exe` directly with Windows users.
+
+Notes:
+- Build on Windows for Windows users (cross-building from Linux/macOS is not reliable with PyInstaller).
+- The executable already includes Python/runtime dependencies, so recipients do not need to install Python.
+
 ## 📋 Prerequisites
 
 - **Python 3.8+** (check with `python --version` or `python3 --version`)
@@ -194,6 +216,7 @@ exif-editor/
 ├── 🚀 setup.sh               # Automated setup (Linux/macOS)
 ├── 🚀 setup.ps1              # Automated setup (Windows PowerShell)
 ├── 🚀 setup.bat              # Automated setup (Windows CMD launcher)
+├── 📦 build_windows_exe.bat  # Build single-file Windows executable
 ├── 🧪 test_setup.py          # Cross-platform installation verification
 ├── 🧪 test_setup.bat         # Windows CMD setup verification wrapper
 ├── 🧪 test_setup.sh          # Linux/macOS installation verification

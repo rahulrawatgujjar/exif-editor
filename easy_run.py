@@ -3,29 +3,62 @@
 
 from __future__ import annotations
 
-import os
-import subprocess
 import sys
 import threading
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
 from pathlib import Path
 
 from camera_presets import CAMERA_PRESETS
 
 
-def get_python_command() -> str:
-    """Resolve Python executable from project venv when available."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    candidates = [
-        os.path.join(script_dir, "venv", "Scripts", "python.exe"),
-        os.path.join(script_dir, "venv", "Scripts", "python"),
-        os.path.join(script_dir, "venv", "bin", "python3"),
-        os.path.join(script_dir, "venv", "bin", "python"),
-    ]
-    for candidate in candidates:
-        if os.path.exists(candidate):
-            return candidate
-    return sys.executable
+class _LineWriter:
+    """File-like writer that emits complete lines to a callback."""
+
+    def __init__(self, emit):
+        self._emit = emit
+        self._buffer = ""
+
+    def write(self, text: str) -> int:
+        self._buffer += text
+        while "\n" in self._buffer:
+            line, self._buffer = self._buffer.split("\n", 1)
+            self._emit(line)
+        return len(text)
+
+    def flush(self):
+        if self._buffer:
+            self._emit(self._buffer)
+            self._buffer = ""
+
+
+def run_exif_editor_args(args: list[str], emit_line=None) -> int:
+    """Run exif_editor.main() in-process so one-file packaging works."""
+    import exif_editor
+
+    if emit_line is None:
+        emit_line = print
+
+    old_argv = sys.argv[:]
+    writer = _LineWriter(emit_line)
+    try:
+        with redirect_stdout(writer), redirect_stderr(writer):
+            sys.argv = ["exif_editor.py", *args]
+            exif_editor.main()
+        writer.flush()
+        return 0
+    except SystemExit as exc:
+        writer.flush()
+        code = exc.code
+        if isinstance(code, int):
+            return code
+        return 0 if code in (None, "") else 1
+    except Exception as exc:
+        writer.flush()
+        emit_line(f"Error: {exc}")
+        return 1
+    finally:
+        sys.argv = old_argv
 
 
 def get_default_batch_output_dir(input_path: str) -> str:
@@ -127,7 +160,7 @@ def run_cli_fallback() -> int:
         default=get_default_batch_output_dir(input_path) if is_batch else None,
     )
 
-    cmd = [get_python_command(), "exif_editor.py", "fake", input_path, "-p", preset]
+    cmd = ["fake", input_path, "-p", preset]
     if randomize:
         cmd.append("--random")
     if fixed_datetime:
@@ -152,9 +185,8 @@ def run_cli_fallback() -> int:
     if output_target:
         cmd.extend(["-d", output_target] if is_batch else ["-o", output_target])
 
-    print("\nRunning:\n  " + " ".join(cmd))
-    result = subprocess.run(cmd, check=False)
-    return result.returncode
+    print("\nRunning:\n  python exif_editor.py " + " ".join(cmd))
+    return run_exif_editor_args(cmd)
 
 
 def run_gui() -> int:
@@ -363,7 +395,7 @@ def run_gui() -> int:
             if not input_path.exists():
                 return None, f"Input path does not exist: {input_value}"
 
-            cmd = [get_python_command(), "exif_editor.py", "fake", input_value, "-p", self.preset.get()]
+            cmd = ["fake", input_value, "-p", self.preset.get()]
 
             if self.randomize.get():
                 cmd.append("--random")
@@ -438,27 +470,16 @@ def run_gui() -> int:
 
             self.running = True
             self.run_button.configure(state="disabled")
-            self._set_log("Running command:\n  " + " ".join(cmd))
+            self._set_log("Running command:\n  python exif_editor.py " + " ".join(cmd))
 
             worker = threading.Thread(target=self._run_command, args=(cmd,), daemon=True)
             worker.start()
 
         def _run_command(self, cmd: list[str]):
-            try:
-                proc = subprocess.Popen(
-                    cmd,
-                    cwd=Path(__file__).resolve().parent,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                )
-                assert proc.stdout is not None
-                for line in proc.stdout:
-                    self.root.after(0, self._append_log, line.rstrip())
-                return_code = proc.wait()
-            except Exception as exc:
-                self.root.after(0, self._append_log, f"Error: {exc}")
-                return_code = 1
+            def emit(line: str):
+                self.root.after(0, self._append_log, line)
+
+            return_code = run_exif_editor_args(cmd, emit_line=emit)
 
             def finish():
                 self.running = False
