@@ -14,7 +14,7 @@ A powerful command-line tool to **view, edit, fake, clear, copy, export and impo
 - 📅 **Timestamp Control**: Random or fixed date/time metadata
 - 🔄 **Batch Processing**: Process entire folders of images
 - 🛡️ **Virtual Environment**: Isolated Python environment for clean dependencies
-- 🎯 **Interactive Mode**: User-friendly prompts for easy usage
+- 🎯 **GUI Launcher**: User-friendly desktop interface for easy usage
 
 ## 🚀 Quick Start
 
@@ -30,7 +30,26 @@ cd exif-editor
 Verify everything works correctly:
 
 ```bash
+python test_setup.py
+```
+
+Windows Command Prompt users can run:
+
+```cmd
+test_setup.bat
+```
+
+Linux/macOS users can also run the shell-based checker:
+
+```bash
 ./test_setup.sh
+```
+
+Quick verification alternative:
+
+```powershell
+python -c "import PIL, piexif; print('Dependencies OK')"
+python exif_editor.py --help
 ```
 
 This will check:
@@ -43,18 +62,21 @@ This will check:
 ### 3. Start Using EXIF Editor
 
 ```bash
-# Interactive mode (recommended for beginners)
-python3 easy_run.py
+# GUI mode (recommended for beginners)
+python easy_run.py
+
+# CLI fallback mode (headless/terminal)
+python easy_run.py --cli
 
 # Command line mode (advanced users)
-python3 exif_editor.py fake image.jpg --city "Paris"
+python exif_editor.py fake image.jpg --city "Paris"
 ```
 
-Follow the prompts to configure your EXIF metadata!
+Use the GUI form to configure and run your EXIF metadata command.
 
 ## 📋 Prerequisites
 
-- **Python 3.8+** (check with `python3 --version`)
+- **Python 3.8+** (check with `python --version` or `python3 --version`)
 - **Internet connection** (for geocoding city names to GPS coordinates)
 - **JPEG images** (`.jpg`, `.jpeg`, `.jpe`, `.jfif` formats supported)
 
@@ -69,16 +91,41 @@ Follow the prompts to configure your EXIF metadata!
 
 ### Option 1: Automated Setup (Recommended)
 
+#### Linux/macOS
+
 ```bash
-# Clone the repository
 git clone https://github.com/rahulrawatgujjar/exif-editor.git
 cd exif-editor
-
-# Run setup script
 ./setup.sh
 ```
 
-### Option 2: Manual Setup
+#### Windows (PowerShell)
+
+```powershell
+git clone https://github.com/rahulrawatgujjar/exif-editor.git
+cd exif-editor
+.\setup.ps1
+```
+
+If PowerShell blocks the script, run this once first (as admin), then retry:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+#### Windows (Command Prompt)
+
+```cmd
+git clone https://github.com/rahulrawatgujjar/exif-editor.git
+cd exif-editor
+setup.bat
+```
+
+`setup.bat` automatically calls PowerShell internally — no extra steps needed.
+
+### Option 2: Manual Setup (if you prefer step-by-step)
+
+#### Linux/macOS
 
 ```bash
 # Clone the repository
@@ -89,10 +136,40 @@ cd exif-editor
 python3 -m venv venv
 
 # Activate virtual environment
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+```
+
+#### Windows (PowerShell)
+
+```powershell
+# Clone repository
+git clone https://github.com/rahulrawatgujjar/exif-editor.git
+cd exif-editor
+
+# Create and activate virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# Install dependencies
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+# Verify installation
+python -c "import PIL, piexif; print('Dependencies OK')"
+python exif_editor.py --help
+```
+
+#### Windows (Command Prompt)
+
+```cmd
+python -m venv venv
+venv\Scripts\activate.bat
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+python exif_editor.py --help
 ```
 
 ### Option 3: Global Installation
@@ -102,7 +179,7 @@ pip install -r requirements.txt
 pip install Pillow piexif
 
 # Run without virtual environment
-python3 exif_editor.py --help
+python exif_editor.py --help
 ```
 
 ## � Repository Structure
@@ -114,11 +191,15 @@ exif-editor/
 ├── 📄 CONTRIBUTING.md         # Guidelines for contributors
 ├── 📄 requirements.txt        # Python dependencies
 ├── 📄 .gitignore             # Git ignore rules
-├── 🚀 setup.sh               # Automated setup script
-├── 🧪 test_setup.sh          # Installation verification script
+├── 🚀 setup.sh               # Automated setup (Linux/macOS)
+├── 🚀 setup.ps1              # Automated setup (Windows PowerShell)
+├── 🚀 setup.bat              # Automated setup (Windows CMD launcher)
+├── 🧪 test_setup.py          # Cross-platform installation verification
+├── 🧪 test_setup.bat         # Windows CMD setup verification wrapper
+├── 🧪 test_setup.sh          # Linux/macOS installation verification
 ├── 🏃 run_with_venv.sh       # Virtual environment launcher
 ├── 📷 exif_editor.py         # Main EXIF editing tool
-├── 🎯 easy_run.py            # Interactive wrapper script
+├── 🎯 easy_run.py            # GUI-first wrapper script (with --cli fallback)
 ├── 📸 camera_presets.py      # Camera and phone presets
 ├── 🐍 python_venv.py         # Python virtual environment launcher
 ├── 📁 input_images/          # Sample images directory
@@ -130,10 +211,10 @@ exif-editor/
 
 ```bash
 # Basic usage - random camera profile
-python3 exif_editor.py fake image.jpg
+python exif_editor.py fake image.jpg
 
 # Advanced usage with all options
-python3 exif_editor.py fake ./input_images/ \
+python exif_editor.py fake ./input_images/ \
   --preset sony_a7iv \
   --random \
   --city "Tokyo" \
@@ -184,13 +265,13 @@ python3 exif_editor.py fake ./input_images/ \
 
 ```bash
 # Random camera profile
-python3 exif_editor.py fake photo.jpg
+python exif_editor.py fake photo.jpg
 
 # Specific camera with randomization
-python3 exif_editor.py fake photo.jpg -p canon_r5 --random
+python exif_editor.py fake photo.jpg -p canon_r5 --random
 
 # With location and metadata
-python3 exif_editor.py fake photo.jpg \
+python exif_editor.py fake photo.jpg \
   --city "Paris" \
   --title "Eiffel Tower" \
   --artist "John Doe" \
@@ -201,10 +282,10 @@ python3 exif_editor.py fake photo.jpg \
 
 ```bash
 # Process entire folder
-python3 exif_editor.py fake ./input_images/ -d ./output/
+python exif_editor.py fake ./input_images/ -d ./output/
 
 # Random cameras with city location
-python3 exif_editor.py fake ./input_images/ \
+python exif_editor.py fake ./input_images/ \
   --random \
   --city "New York" \
   -d ./output/
@@ -214,7 +295,7 @@ python3 exif_editor.py fake ./input_images/ \
 
 ```bash
 # Set specific fields
-python3 exif_editor.py edit photo.jpg \
+python exif_editor.py edit photo.jpg \
   --make "Canon" \
   --model "EOS R5" \
   --artist "Jane Smith" \
@@ -226,13 +307,13 @@ python3 exif_editor.py edit photo.jpg \
 
 ```bash
 # By city name (automatic geocoding)
-python3 exif_editor.py fake photo.jpg --city "London"
+python exif_editor.py fake photo.jpg --city "London"
 
 # Manual coordinates
-python3 exif_editor.py gps photo.jpg --lat 51.5074 --lon -0.1278
+python exif_editor.py gps photo.jpg --lat 51.5074 --lon -0.1278
 
 # With altitude
-python3 exif_editor.py gps photo.jpg --lat 51.5074 --lon -0.1278 --alt 25
+python exif_editor.py gps photo.jpg --lat 51.5074 --lon -0.1278 --alt 25
 ```
 
 ## 🔧 Configuration
@@ -246,7 +327,8 @@ The project automatically detects and uses the virtual environment. Manual activ
 source venv/bin/activate
 
 # Windows
-venv\Scripts\activate
+venv\Scripts\activate.bat   # Command Prompt
+.\venv\Scripts\Activate.ps1  # PowerShell
 ```
 
 ### Custom Camera Presets
@@ -280,6 +362,13 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Windows equivalent:
+
+```powershell
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
 **"City not found" error:**
 - Check internet connection
 - Try different city name spelling
@@ -295,11 +384,11 @@ chmod +x setup.sh
 
 ```bash
 # View all commands
-python3 exif_editor.py --help
+python exif_editor.py --help
 
 # View specific command help
-python3 exif_editor.py fake --help
-python3 exif_editor.py edit --help
+python exif_editor.py fake --help
+python exif_editor.py edit --help
 ```
 
 ## 🤝 Contributing
