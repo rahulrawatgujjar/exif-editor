@@ -14,7 +14,8 @@ Usage:
   python exif_editor.py gps    image.jpg  --lat LAT --lon LON [--alt ALT]
 
 Requires:
-  pip install Pillow piexif
+    pip install Pillow piexif
+    ExifTool executable for full Windows metadata compatibility
 """
 
 import argparse
@@ -27,6 +28,8 @@ import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from metadata import MetadataError, MetadataManager
+
 try:
     from PIL import Image
     import piexif
@@ -36,6 +39,9 @@ except ImportError:
     sys.exit(1)
 
 from camera_presets import CAMERA_PRESETS
+
+
+METADATA_MANAGER = MetadataManager()
 
 
 # ---------------------------------------------------------------------------
@@ -249,8 +255,9 @@ def _apply_fake_to_file(src: Path, dst: Path, args, p: dict,
         piexif.ImageIFD.DateTime:         encode_string(ts),
         piexif.ImageIFD.YCbCrPositioning: 1,
     }
-    if args.artist:
-        exif["0th"][piexif.ImageIFD.Artist]          = encode_string(args.artist)
+    author_name = args.author or args.artist
+    if author_name:
+        exif["0th"][piexif.ImageIFD.Artist]          = encode_string(author_name)
     if args.copyright:
         exif["0th"][piexif.ImageIFD.Copyright]        = encode_string(args.copyright)
     if args.title:
@@ -271,10 +278,9 @@ def _apply_fake_to_file(src: Path, dst: Path, args, p: dict,
         piexif.ExifIFD.LensMake:          encode_string(p["lens_make"]),
         piexif.ExifIFD.LensModel:         encode_string(lens_name),
     }
-    if args.comment:
-        exif["Exif"][piexif.ExifIFD.UserComment] = encode_user_comment(args.comment)
-    if args.description:
-        exif["Exif"][piexif.ExifIFD.UserComment] = encode_user_comment(args.description)
+    comment_text = args.comments or args.description or args.comment
+    if comment_text:
+        exif["Exif"][piexif.ExifIFD.UserComment] = encode_user_comment(comment_text)
 
     # --- GPS IFD (optional) ---
     # Prefer explicit lat/lon args passed to this function, fall back to CLI args
@@ -296,6 +302,29 @@ def _apply_fake_to_file(src: Path, dst: Path, args, p: dict,
         exif["GPS"] = gps
 
     save_exif(src, exif, dst)
+
+    normalized_tags = []
+    if getattr(args, "tags", None):
+        normalized_tags = [item.strip() for item in args.tags.split(",") if item.strip()]
+
+    comments = args.comments or args.description or args.comment
+    author = args.author or args.artist
+    metadata_payload = {
+        "title": args.title,
+        "subject": args.subject,
+        "tags": normalized_tags,
+        "rating": args.rating,
+        "comments": comments,
+        "author": author,
+        "copyright": args.copyright,
+    }
+
+    if any(v not in (None, "", []) for v in metadata_payload.values()):
+        try:
+            METADATA_MANAGER.write_metadata(dst, metadata_payload)
+        except MetadataError as exc:
+            print(f"Warning: advanced metadata sync skipped ({exc})")
+
     return {"lens": lens_name, "iso": iso, "shutter": shutter,
             "fnumber": fnumber, "ts": ts,
             "lat": _lat, "lon": _lon}
@@ -406,10 +435,16 @@ def cmd_fake(args):
         print(f"  GPS       : {info['lat']:.6f}, {info['lon']:.6f}")
     if args.title:
         print(f"  Title     : {args.title}")
-    if args.description:
-        print(f"  Desc      : {args.description}")
-    if args.artist:
-        print(f"  Artist    : {args.artist}")
+    if args.subject:
+        print(f"  Subject   : {args.subject}")
+    if args.tags:
+        print(f"  Tags      : {args.tags}")
+    if args.rating:
+        print(f"  Rating    : {args.rating}")
+    if args.comments or args.description or args.comment:
+        print(f"  Comments  : {args.comments or args.description or args.comment}")
+    if args.author or args.artist:
+        print(f"  Author    : {args.author or args.artist}")
 
 
 # ---------------------------------------------------------------------------
@@ -421,6 +456,24 @@ def cmd_view(args):
     path = Path(args.image)
     if not path.exists():
         sys.exit(f"File not found: {path}")
+
+    if METADATA_MANAGER.available:
+        try:
+            unified = METADATA_MANAGER.read_metadata(path)
+            unified_data = unified.to_dict()
+            if any(v not in (None, "", []) for v in unified_data.values()):
+                print(f"\n{'='*55}")
+                print("  Unified Metadata (Windows-compatible)")
+                print(f"{'='*55}")
+                print(f"  Title      : {unified_data.get('title') or ''}")
+                print(f"  Subject    : {unified_data.get('subject') or ''}")
+                print(f"  Tags       : {', '.join(unified_data.get('tags') or [])}")
+                print(f"  Rating     : {unified_data.get('rating') or ''}")
+                print(f"  Comments   : {unified_data.get('comments') or ''}")
+                print(f"  Author     : {unified_data.get('author') or ''}")
+                print(f"  Copyright  : {unified_data.get('copyright') or ''}")
+        except MetadataError as exc:
+            print(f"Warning: unified metadata read skipped ({exc})")
 
     exif = load_exif(path)
     ifd_labels = {
@@ -611,6 +664,98 @@ def cmd_gps(args):
           + (f", alt {args.alt}m" if args.alt is not None else ""))
 
 
+def cmd_verify(args):
+    """Verify Windows/XMP/EXIF mapped metadata fields for one image."""
+    path = Path(args.image)
+    if not path.exists():
+        sys.exit(f"File not found: {path}")
+
+    if not METADATA_MANAGER.available:
+        sys.exit(
+            "ExifTool is required for verify. Put exiftool in PATH or tools/exiftool.exe."
+        )
+
+    try:
+        unified = METADATA_MANAGER.read_metadata(path)
+        raw = METADATA_MANAGER.get_raw_metadata(path)
+    except MetadataError as exc:
+        sys.exit(f"Verify failed: {exc}")
+
+    print(f"\n{'='*72}")
+    print(f"Verify metadata mapping: {path.name}")
+    print(f"{'='*72}")
+    print("\nUnified values")
+    print(f"  Title     : {unified.title or ''}")
+    print(f"  Subject   : {unified.subject or ''}")
+    print(f"  Tags      : {', '.join(unified.tags)}")
+    print(f"  Rating    : {unified.rating or ''}")
+    print(f"  Comments  : {unified.comments or ''}")
+    print(f"  Author    : {unified.author or ''}")
+    print(f"  Copyright : {unified.copyright_text or ''}")
+
+    fields = {
+        "Title": [
+            "IFD0:XPTitle",
+            "IFD0:ImageDescription",
+            "EXIF:XPTitle",
+            "EXIF:ImageDescription",
+            "XMP-dc:Title",
+            "XMP-dc:Description",
+        ],
+        "Subject": [
+            "IFD0:XPSubject",
+            "EXIF:XPSubject",
+            "XMP-photoshop:Headline",
+            "IPTC:ObjectName",
+        ],
+        "Tags": [
+            "IFD0:XPKeywords",
+            "EXIF:XPKeywords",
+            "XMP-dc:Subject",
+            "IPTC:Keywords",
+            "XMP-microsoft:LastKeywordXMP",
+        ],
+        "Rating": [
+            "IFD0:Rating",
+            "IFD0:RatingPercent",
+            "EXIF:Rating",
+            "EXIF:RatingPercent",
+            "XMP-xmp:Rating",
+            "XMP:Rating",
+            "XMP-microsoft:RatingPercent",
+        ],
+        "Comments": [
+            "IFD0:XPComment",
+            "EXIF:XPComment",
+            "ExifIFD:UserComment",
+            "EXIF:UserComment",
+        ],
+        "Author": [
+            "IFD0:XPAuthor",
+            "IFD0:Artist",
+            "EXIF:XPAuthor",
+            "EXIF:Artist",
+            "XMP-dc:Creator",
+        ],
+        "Copyright": [
+            "IFD0:Copyright",
+            "EXIF:Copyright",
+            "XMP-dc:Rights",
+        ],
+    }
+
+    raw_lower = {k.lower(): v for k, v in raw.items()}
+    print("\nMapped raw tags")
+    for section, tags in fields.items():
+        print(f"\n[{section}]")
+        for tag in tags:
+            value = raw_lower.get(tag.lower())
+            if value in (None, "", []):
+                print(f"  MISSING  {tag}")
+            else:
+                print(f"  OK       {tag} = {value}")
+
+
 # ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
@@ -666,6 +811,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_gps.add_argument("--alt", type=float, default=None, help="Altitude in meters (optional)")
     p_gps.add_argument("-o", "--output", metavar="OUT", help="Save to a new file")
 
+    # --- verify ---
+    p_verify = sub.add_parser("verify", help="Verify mapped Windows/XMP/EXIF metadata fields")
+    p_verify.add_argument("image", help="Path to the image")
+
     # --- fake ---
     preset_list = ", ".join(CAMERA_PRESETS.keys())
     p_fake = sub.add_parser(
@@ -685,8 +834,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_fake.add_argument("--datetime", metavar="YYYY:MM:DD HH:MM:SS",
         help="Fix timestamp instead of randomizing")
     p_fake.add_argument("--title",      metavar="TEXT",  help="Image title (stored as ImageDescription)")
+    p_fake.add_argument("--subject",    metavar="TEXT",  help="Windows Explorer Subject field")
+    p_fake.add_argument("--tags",       metavar="CSV",   help="Comma-separated tags/keywords")
+    p_fake.add_argument("--rating",     type=int, choices=[1, 2, 3, 4, 5], metavar="1-5",
+        help="Windows Explorer rating (1 to 5)")
+    p_fake.add_argument("--comments",   metavar="TEXT",  help="Windows Explorer comments")
     p_fake.add_argument("--description",metavar="TEXT",  help="Image description (stored as UserComment)")
     p_fake.add_argument("--artist",     metavar="NAME",  help="Photographer name")
+    p_fake.add_argument("--author", dest="author", metavar="NAME",
+        help="Alias for --artist (preferred term for Explorer)")
     p_fake.add_argument("--copyright",  metavar="TEXT",  help="Copyright string")
     p_fake.add_argument("--comment",    metavar="TEXT",  help="UserComment field (use --description instead)")
     loc_group = p_fake.add_mutually_exclusive_group()
@@ -723,6 +879,7 @@ def main():
         "export": cmd_export,
         "import": cmd_import,
         "gps":    cmd_gps,
+        "verify": cmd_verify,
         "fake":   cmd_fake,
     }
     dispatch[args.command](args)

@@ -21,7 +21,19 @@ if errorlevel 1 exit /b 1
 py -m pip install -r requirements.txt pyinstaller
 if errorlevel 1 exit /b 1
 
-py -m PyInstaller --noconfirm --clean --onefile --windowed --name ExifEditor easy_run.py
+if exist tools\exiftool.exe (
+    if exist tools\exiftool_files (
+        echo [OK] Found bundled ExifTool runtime: tools\exiftool.exe + tools\exiftool_files
+    ) else (
+        echo [WARN] tools\exiftool.exe found but tools\exiftool_files is missing.
+        echo [WARN] ExifTool may fail at runtime without required perl DLLs.
+    )
+) else (
+    echo [WARN] tools\exiftool.exe not found.
+    echo [WARN] Windows Details metadata fields will be limited until ExifTool is available.
+)
+
+py -m PyInstaller --noconfirm --clean ExifEditor.spec
 if errorlevel 1 (
     echo.
     echo [FAIL] Build failed.

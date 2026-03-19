@@ -70,7 +70,32 @@ def check_camera_presets() -> bool:
 def check_script_imports() -> bool:
     ok_editor = check_import("exif_editor", "exif_editor.py")
     ok_easy = check_import("easy_run", "easy_run.py")
-    return ok_editor and ok_easy
+    ok_metadata = check_import("metadata.manager", "metadata.manager")
+    return ok_editor and ok_easy and ok_metadata
+
+
+def check_exiftool_available(project_root: Path) -> bool:
+    tools_path = project_root / "tools" / "exiftool.exe"
+    if tools_path.exists():
+        return status(True, "Bundled ExifTool found at tools/exiftool.exe")
+
+    for cmd in (["exiftool", "-ver"], ["exiftool.exe", "-ver"]):
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=project_root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                return status(True, f"ExifTool available in PATH ({cmd[0]})")
+        except Exception:
+            continue
+
+    warn("ExifTool not found. Windows Explorer metadata fields (Title/Subject/Tags/Rating/etc.) need ExifTool.")
+    return True
 
 
 def check_cli_help(project_root: Path) -> bool:
@@ -127,6 +152,7 @@ def main() -> int:
         check_import("piexif"),
         check_camera_presets(),
         check_script_imports(),
+        check_exiftool_available(project_root),
         check_cli_help(project_root),
         check_sample_images(project_root),
     ]

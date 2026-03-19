@@ -6,6 +6,8 @@
 
 A powerful command-line tool to **view, edit, fake, clear, copy, export and import** EXIF metadata for JPEG images. Perfect for AI-generated images, photography workflows, and metadata management.
 
+This project now supports Windows Explorer Details fields with cross-platform compatibility by writing redundant metadata across EXIF + XMP + Windows tags.
+
 ## ✨ Features
 
 - 🎭 **Fake Camera Profiles**: Apply realistic camera metadata to AI-generated images
@@ -15,6 +17,8 @@ A powerful command-line tool to **view, edit, fake, clear, copy, export and impo
 - 🔄 **Batch Processing**: Process entire folders of images
 - 🛡️ **Virtual Environment**: Isolated Python environment for clean dependencies
 - 🎯 **GUI Launcher**: User-friendly desktop interface for easy usage
+- 🪟 **Windows Details Support**: Edit Title, Subject, Tags, Rating, Comments, Author, and Copyright
+- 🔁 **Cross-Platform Redundancy**: Writes equivalent EXIF/XMP/Windows tags for better interoperability
 
 ## 🚀 Quick Start
 
@@ -95,6 +99,21 @@ Share `dist\ExifEditor.exe` directly with Windows users.
 Notes:
 - Build on Windows for Windows users (cross-building from Linux/macOS is not reliable with PyInstaller).
 - The executable already includes Python/runtime dependencies, so recipients do not need to install Python.
+- For full Explorer Details compatibility, place ExifTool at `tools/exiftool.exe` before building so it is bundled into the EXE.
+
+## Windows Details Fields
+
+The GUI supports these Explorer-facing fields:
+
+- Title
+- Subject
+- Tags (comma-separated)
+- Rating (1-5)
+- Comments
+- Author
+- Copyright
+
+Internally these are written redundantly (XMP + EXIF + Windows tags) so Linux tools and Windows Explorer both show expected metadata.
 
 ## 📋 Prerequisites
 
@@ -289,6 +308,16 @@ python exif_editor.py fake ./input_images/ \
 ```bash
 # Random camera profile
 python exif_editor.py fake photo.jpg
+
+# Explorer-compatible metadata fields (written across XMP + EXIF + Windows tags)
+python exif_editor.py fake photo.jpg \
+  --title "Sunset at Lake" \
+  --subject "Travel" \
+  --tags "sunset,holiday,nature" \
+  --rating 5 \
+  --comments "Shot on weekend trip" \
+  --author "Rahul" \
+  --copyright "Copyright 2026 Rahul"
 
 # Specific camera with randomization
 python exif_editor.py fake photo.jpg -p canon_r5 --random

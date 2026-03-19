@@ -159,8 +159,11 @@ def run_cli_fallback() -> int:
             lat = lon = alt = None
 
     title = ask_input("Title (optional)")
-    description = ask_input("Description (optional)")
-    artist = ask_input("Artist (optional)")
+    subject = ask_input("Subject (optional)")
+    tags = ask_input("Tags (comma-separated, optional)")
+    rating = ask_input("Rating 1-5 (optional)")
+    comments = ask_input("Comments (optional)")
+    author = ask_input("Author (optional)")
     copyright_str = ask_input("Copyright (optional)")
 
     output_target = ask_input(
@@ -183,10 +186,23 @@ def run_cli_fallback() -> int:
             cmd.extend(["--alt", str(alt)])
     if title:
         cmd.extend(["--title", title])
-    if description:
-        cmd.extend(["--description", description])
-    if artist:
-        cmd.extend(["--artist", artist])
+    if subject:
+        cmd.extend(["--subject", subject])
+    if tags:
+        cmd.extend(["--tags", tags])
+    if rating:
+        try:
+            rating_value = int(rating)
+            if 1 <= rating_value <= 5:
+                cmd.extend(["--rating", str(rating_value)])
+            else:
+                print("Warning: rating must be 1-5. Skipping rating.")
+        except ValueError:
+            print("Warning: rating must be an integer from 1-5. Skipping rating.")
+    if comments:
+        cmd.extend(["--comments", comments])
+    if author:
+        cmd.extend(["--author", author])
     if copyright_str:
         cmd.extend(["--copyright", copyright_str])
 
@@ -206,7 +222,7 @@ def run_gui() -> int:
         def __init__(self, root: tk.Tk):
             self.root = root
             self.root.title("EXIF Editor - GUI")
-            self.root.geometry("880x760")
+            self.root.geometry("920x860")
             self.running = False
 
             self.input_path = tk.StringVar()
@@ -225,8 +241,10 @@ def run_gui() -> int:
             self.alt = tk.StringVar()
 
             self.title_text = tk.StringVar()
-            self.description = tk.StringVar()
-            self.artist = tk.StringVar()
+            self.subject = tk.StringVar()
+            self.tags = tk.StringVar()
+            self.rating = tk.StringVar(value="")
+            self.author = tk.StringVar()
             self.copyright_str = tk.StringVar()
 
             self.output_target = tk.StringVar()
@@ -239,8 +257,30 @@ def run_gui() -> int:
             self.root.columnconfigure(0, weight=1)
             self.root.rowconfigure(0, weight=1)
 
-            main = ttk.Frame(self.root, padding=10)
-            main.grid(row=0, column=0, sticky="nsew")
+            outer = ttk.Frame(self.root)
+            outer.grid(row=0, column=0, sticky="nsew")
+            outer.columnconfigure(0, weight=1)
+            outer.rowconfigure(0, weight=1)
+
+            self.main_canvas = tk.Canvas(outer, highlightthickness=0)
+            self.main_canvas.grid(row=0, column=0, sticky="nsew")
+            v_scroll = ttk.Scrollbar(outer, orient="vertical", command=self.main_canvas.yview)
+            v_scroll.grid(row=0, column=1, sticky="ns")
+            self.main_canvas.configure(yscrollcommand=v_scroll.set)
+
+            main = ttk.Frame(self.main_canvas, padding=10)
+            self._main_window_id = self.main_canvas.create_window((0, 0), window=main, anchor="nw")
+            self.main_canvas.bind("<Configure>", self._on_canvas_resize)
+            main.bind("<Configure>", self._on_main_configure)
+
+            # Enable wheel scrolling for the full form content.
+            self.main_canvas.bind("<MouseWheel>", self._on_mousewheel)
+            self.main_canvas.bind("<Button-4>", self._on_mousewheel_linux)
+            self.main_canvas.bind("<Button-5>", self._on_mousewheel_linux)
+            self.root.bind_all("<MouseWheel>", self._on_mousewheel, add="+")
+            self.root.bind_all("<Button-4>", self._on_mousewheel_linux, add="+")
+            self.root.bind_all("<Button-5>", self._on_mousewheel_linux, add="+")
+
             main.columnconfigure(0, weight=1)
             main.rowconfigure(6, weight=1)
 
@@ -302,13 +342,27 @@ def run_gui() -> int:
             self.alt_entry.grid(row=2, column=2, sticky="w", padx=8, pady=(0, 8))
             ttk.Radiobutton(loc_frame, text="No GPS", variable=self.location_mode, value="none", command=self._refresh_field_visibility).grid(row=2, column=0, sticky="w", padx=8, pady=(0, 8))
 
-            meta_frame = ttk.LabelFrame(main, text="5) Metadata (optional)")
+            meta_frame = ttk.LabelFrame(main, text="5) Metadata (Windows Details + Cross-platform)")
             meta_frame.grid(row=4, column=0, sticky="ew", pady=(0, 8))
             meta_frame.columnconfigure(1, weight=1)
             self._add_labeled_entry(meta_frame, 0, "Title", self.title_text)
-            self._add_labeled_entry(meta_frame, 1, "Description", self.description)
-            self._add_labeled_entry(meta_frame, 2, "Artist", self.artist)
-            self._add_labeled_entry(meta_frame, 3, "Copyright", self.copyright_str)
+            self._add_labeled_entry(meta_frame, 1, "Subject", self.subject)
+            self._add_labeled_entry(meta_frame, 2, "Tags (comma-separated)", self.tags)
+
+            ttk.Label(meta_frame, text="Rating").grid(row=3, column=0, sticky="e", padx=8, pady=4)
+            ttk.Combobox(
+                meta_frame,
+                textvariable=self.rating,
+                state="readonly",
+                values=["", "1", "2", "3", "4", "5"],
+            ).grid(row=3, column=1, sticky="ew", padx=8, pady=4)
+
+            ttk.Label(meta_frame, text="Comments").grid(row=4, column=0, sticky="ne", padx=8, pady=4)
+            self.comments_text = scrolledtext.ScrolledText(meta_frame, wrap="word", height=4)
+            self.comments_text.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
+
+            self._add_labeled_entry(meta_frame, 5, "Author", self.author)
+            self._add_labeled_entry(meta_frame, 6, "Copyright", self.copyright_str)
 
             out_frame = ttk.LabelFrame(main, text="6) Output")
             out_frame.grid(row=5, column=0, sticky="ew", pady=(0, 8))
@@ -329,6 +383,26 @@ def run_gui() -> int:
             self.log_box.grid(row=1, column=0, sticky="nsew")
 
             self.input_path.trace_add("write", lambda *_: self._refresh_mode_label())
+
+        def _on_main_configure(self, _event):
+            self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
+
+        def _on_canvas_resize(self, event):
+            # Keep the embedded form width in sync with the canvas viewport.
+            self.main_canvas.itemconfigure(self._main_window_id, width=event.width)
+
+        def _on_mousewheel(self, event):
+            widget = event.widget
+            if widget in (self.comments_text, self.log_box):
+                return
+            self.main_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        def _on_mousewheel_linux(self, event):
+            widget = event.widget
+            if widget in (self.comments_text, self.log_box):
+                return
+            direction = -1 if event.num == 4 else 1
+            self.main_canvas.yview_scroll(direction, "units")
 
         @staticmethod
         def _add_labeled_entry(parent: ttk.LabelFrame, row: int, label: str, variable: tk.StringVar):
@@ -460,10 +534,17 @@ def run_gui() -> int:
 
             if self.title_text.get().strip():
                 cmd.extend(["--title", self.title_text.get().strip()])
-            if self.description.get().strip():
-                cmd.extend(["--description", self.description.get().strip()])
-            if self.artist.get().strip():
-                cmd.extend(["--artist", self.artist.get().strip()])
+            if self.subject.get().strip():
+                cmd.extend(["--subject", self.subject.get().strip()])
+            if self.tags.get().strip():
+                cmd.extend(["--tags", self.tags.get().strip()])
+            if self.rating.get().strip():
+                cmd.extend(["--rating", self.rating.get().strip()])
+            comments = self.comments_text.get("1.0", "end").strip()
+            if comments:
+                cmd.extend(["--comments", comments])
+            if self.author.get().strip():
+                cmd.extend(["--author", self.author.get().strip()])
             if self.copyright_str.get().strip():
                 cmd.extend(["--copyright", self.copyright_str.get().strip()])
 
